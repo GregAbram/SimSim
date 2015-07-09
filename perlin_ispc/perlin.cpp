@@ -1,6 +1,10 @@
 #include <stdlib.h>
 #include <pthread.h>
+#include "Partition.h"
 #include "perlin_ispc.h"
+
+static float simulation_time = 0;
+void SetSimulationTime(float t) { simulation_time = t; }
 
 void SetFrequency(float f)
 {
@@ -55,37 +59,43 @@ static void *Perlin_task(void *p)
   pthread_exit(NULL);
 }
 
-void Perlin(float buf[], int xsz, int ysz, int zsz, float time, float d, int xo, int yo, int zo)
+void Perlin(Partition *p)
 {
-  if (m_nthreads == 1)
-    ispc::Perlin(buf, 0, xsz, ysz, zsz, time, d, xo, yo, zo);
-  else
-  {
-    task_block task_blocks[m_nthreads];
-    pthread_t threads[m_nthreads];
+	int xo, yo, zo;
+	int xsz, ysz, zsz;
 
-    int dx = xsz / m_nthreads;
+	p->GetOffset(xo, yo, zo);
+	p->GetSize(xsz, ysz, zsz);
 
-    for (int i = 0; i < m_nthreads; i++)
-    {
-      task_block *t = task_blocks + i;
-      t->buf = buf;
-      t->xo  = xo;
-      t->yo  = yo;
-      t->zo  = zo;
-      t->x0  = i*dx;
-      t->x1  = (i == (m_nthreads-1)) ? xsz : (i+1)*dx;
-      t->ysz = ysz;
-      t->zsz = zsz;
-      t->t   = time;
-      t->d   = d;
-      pthread_create(threads + i, NULL, Perlin_task, (void *)t);
-    }
+	if (m_nthreads == 1)
+		ispc::Perlin(p->GetBuf(), 0, xsz, ysz, zsz, simulation_time, p->GetD(), xo, yo, zo);
+	else
+	{
+		task_block task_blocks[m_nthreads];
+		pthread_t threads[m_nthreads];
 
-    for (int i = 0; i < m_nthreads; i++)
-    {
-      void *r;
-      pthread_join(threads[i], &r);
-    }
-  }
+		int dx = xsz / m_nthreads;
+
+		for (int i = 0; i < m_nthreads; i++)
+		{
+			task_block *t = task_blocks + i;
+			t->buf = p->GetBuf();
+			t->xo  = xo;
+			t->yo  = yo;
+			t->zo  = zo;
+			t->x0  = i*dx;
+			t->x1  = (i == (m_nthreads-1)) ? xsz : (i+1)*dx;
+			t->ysz = ysz;
+			t->zsz = zsz;
+			t->t   = simulation_time;
+			t->d   = p->GetD();
+			pthread_create(threads + i, NULL, Perlin_task, (void *)t);
+		}
+
+		for (int i = 0; i < m_nthreads; i++)
+		{
+			void *r;
+			pthread_join(threads[i], &r);
+		}
+	}
 }

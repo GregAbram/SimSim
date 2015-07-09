@@ -9,9 +9,11 @@
 #include <fstream>
 #include <sstream>
 #include <math.h>
+#include <memory>
+#include <vector>
 
 #include "perlin.h"
-#include "partition_volume.h"
+#include "Partition.h"
 
 using namespace std;
 
@@ -33,39 +35,27 @@ syntax(char *a)
     exit(1);
 }
 
-struct partition_data
-{
-  int id;
-	float d;
-	int x0, x1;
-	int y0, y1;
-	int z0, z1;
-  float *buf;
-};
-
-partition_data *partitions;
+vector< unique_ptr<Partition> > partitions;
 float simtime;
 
 void *
 task(void *t)
 {
-  partition_data *p = (partition_data *)t;
-	Perlin(p->buf, p->x1-p->x0, p->y1-p->y0, p->z1-p->z0, simtime, p->d, p->x0, p->y0, p->z0);
+  Partition *p = (Partition *)t;
+	Perlin(p);
 	pthread_exit(NULL);
 }
 
 void
 timestep(int n, float t)
 {
-	simtime = t;
-
-	pthread_t tids[n];
+	SetSimulationTime(t);
 
 	for (int i = 0; i < n; i++)
-		pthread_create(tids+i, NULL, task, (void *)(partitions+i));
+		partitions[i]->RunThread(task);
 
 	for (int i = 0; i < n; i++)
-		pthread_join(tids[i], NULL);
+		partitions[i]->WaitThread();
 }
 
 int main(int argc, char *argv[])
@@ -99,28 +89,15 @@ int main(int argc, char *argv[])
 	float d = 1.0 / xsz;
 
 	pthread_t tids[num_partitions];
-	partitions = new partition_data[num_partitions];
 
 	for (int i = 0; i < num_partitions; i++)
-	{
-		partition_data *p = partitions + i;
-		p->id = i;
-		p->d = 1.0 / xsz;
-		partition_volume(num_partitions, i, xsz, ysz, zsz, p->x0, p->x1, p->y0, p->y1, p->z0, p->z1);
-		p->buf = new float[(p->x1-p->x0) * (p->y1-p->y0) * (p->z1-p->z0)];
-	}
+		partitions.push_back(unique_ptr<Partition>(new Partition(num_partitions, i, xsz, ysz, zsz)));
 
   for (int t = 0; t < nt; t++)
   {
-		std::cerr << "S" << t;
+		cerr << "S" << t;
 		timestep(num_partitions, t*delta_t);
-		std::cerr << "E\n";
+		cerr << "E\n";
 	}
-
-	for (int i = 0; i < num_partitions; i++)
-	{
-		delete[] partitions[i].buf;
-	}
-	delete[] partitions;
 }
 

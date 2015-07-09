@@ -228,6 +228,7 @@ export void Perlin(uniform float buf[], uniform int x0, uniform int x1, uniform 
 	uniform int zstep = 1;
 
 	uniform int span = 32;
+
 	launch[((x1 - x0) + (span-1))/span] Perlin_task(buf, x0, x1, ysz, zsz, t, xstep, ystep, zstep, d, xo, yo, zo, span);
 }
 	

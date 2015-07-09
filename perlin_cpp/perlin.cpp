@@ -1,5 +1,10 @@
+#include "perlin.h"
+
 #include "pthread.h"
 #include "rvectors.h"
+
+static float simulation_time = 0;
+void SetSimulationTime(float t) { simulation_time = t; }
 
 #define DEFAULT_PERLIN_FREQUENCY 1.0
 #define DEFAULT_PERLIN_LACUNARITY 2.0
@@ -243,10 +248,16 @@ static void *Perlin_task(void *p)
 	pthread_exit(NULL);
 }
 
-void Perlin(float buf[], int xsz, int ysz, int zsz, float time, float d, int xo, int yo, int zo)
+void Perlin(Partition *p)
 {
+	int xo, yo, zo;
+	int xsz, ysz, zsz;
+
+	p->GetOffset(xo, yo, zo);
+	p->GetSize(xsz, ysz, zsz);
+
 	if (m_nthreads == 1)
-		Perlin_slice(buf, 0, xsz, ysz, zsz, time, d, xo, yo, zo);
+		Perlin_slice(p->GetBuf(), 0, xsz, ysz, zsz, simulation_time, p->GetD(), xo, yo, zo);
 	else
 	{
 		task_block task_blocks[m_nthreads];
@@ -257,16 +268,16 @@ void Perlin(float buf[], int xsz, int ysz, int zsz, float time, float d, int xo,
 		for (int i = 0; i < m_nthreads; i++)
 		{
 			task_block *t = task_blocks + i;
-			t->buf = buf;
-			t->xo  = 0;
-			t->yo  = 0;
-			t->zo  = 0;
+			t->buf = p->GetBuf();
+			t->xo  = xo;
+			t->yo  = yo;
+			t->zo  = zo;
 			t->x0  = i*dx;
 			t->x1  = (i == (m_nthreads-1)) ? xsz : (i+1)*dx;
 			t->ysz = ysz;
 			t->zsz = zsz;
-			t->t   = time;
-			t->d   = d;
+			t->t   = simulation_time;
+			t->d   = p->GetD();
 			pthread_create(threads + i, NULL, Perlin_task, (void *)t);
 		}
 

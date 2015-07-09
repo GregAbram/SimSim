@@ -1,5 +1,5 @@
 ADD_DEFINITIONS_ISPC()
-
+INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR})
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR})
 
 MACRO (MY_ISPC_ADD_LIBRARY name type)
@@ -18,5 +18,4 @@ MACRO (MY_ISPC_ADD_LIBRARY name type)
   ADD_LIBRARY(${name} ${type} ${ISPC_OBJECTS} ${OTHER_SOURCES})
 ENDMACRO()
 
-
-MY_ISPC_ADD_LIBRARY(perlin perlin.cpp perlin.ispc tasksys.cpp)
+MY_ISPC_ADD_LIBRARY(perlin SHARED perlin.cpp perlin.ispc tasksys.cpp)
