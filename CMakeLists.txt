@@ -50,6 +50,6 @@ ENDIF(APPLE)
 # INCLUDE(cmake/mpi.cmake)
 
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR})
-ADD_EXECUTABLE(sim sim.cpp partition_volume.cpp)
+ADD_EXECUTABLE(sim sim.cpp)
 TARGET_LINK_LIBRARIES(sim LINK_PUBLIC perlin)
 
