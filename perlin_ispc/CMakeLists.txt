@@ -19,3 +19,4 @@ MACRO (MY_ISPC_ADD_LIBRARY name type)
 ENDMACRO()
 
 MY_ISPC_ADD_LIBRARY(perlin SHARED perlin.cpp perlin.ispc tasksys.cpp)
+INSTALL(TARGETS perlin DESTINATION lib)

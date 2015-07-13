@@ -31,13 +31,26 @@ public:
 		z1 = (k+1) * (ny / nk) - 1;
 
 		buf = (float *)malloc((x1-x0)*(y1-y0)*(z1-z0)*sizeof(float));
-		fprintf(stderr, "Allocating 0x%08lx\n", (long)buf);
+		shared = true;
+	}
+
+	Partition(int ox, int oy, int oz, int nx, int ny, int nz, float *values)
+	{
+		x0 = ox;
+		x1 = ox + nx;
+		y0 = oy;
+		y1 = oy + ny;
+		z0 = oz;
+		z1 = oz + nz;
+
+		buf = (float *)malloc((x1-x0)*(y1-y0)*(z1-z0)*sizeof(float));
+		shared = false;
 	}
 
 	~Partition()
 	{
-		fprintf(stderr, "Freeing 0x%08lx\n", (long)buf);
-		free(buf);
+		if (! shared)
+			free(buf);
 	}
 
 	void
@@ -113,5 +126,6 @@ private:
   int z0, z1;
   float *buf;
 	pthread_t tid;
+	bool shared;
 };
 
