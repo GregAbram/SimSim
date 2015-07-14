@@ -11,27 +11,20 @@ class Partition
 {
 public:
 
-	Partition(int np, int id, int nx, int ny, int nz) : id(id)
+	Partition(int np, int id, int xsz, int ysz, int zsz) : id(id), userData(NULL)
 	{
-		int ni, nj, nk;
-		reduce(np, ni, nj, nk);
+		int nx, ny, nz;
 
-		d = 1.0 / nx;
+		d = 1.0 / xsz;
+		
+		partition(np, id, xsz, ysz, zsz, x0, y0, z0, nx, ny, nz);
 
-		int i, j, k;
-		i = id / (nj * nk);
-		j = (id % (nj*nk)) / nk;
-		k = id % nk;
+		x1 = x0 + nx;
+		y1 = y0 + ny;
+		z1 = z0 + nz;
 
-		x0 = i * (nx / ni);
-		x1 = (i+1) * (nx / ni) - 1;
-		y0 = j * (ny / nj);
-		y1 = (j+1) * (ny / nj) - 1;
-		z0 = k * (nz / nk);
-		z1 = (k+1) * (ny / nk) - 1;
-
-		buf = (float *)malloc((x1-x0)*(y1-y0)*(z1-z0)*sizeof(float));
-		shared = true;
+		buf = (float *)malloc(nx*ny*nz*sizeof(float));
+		shared = false;
 	}
 
 	Partition(int ox, int oy, int oz, int nx, int ny, int nz, float *values)
@@ -44,7 +37,7 @@ public:
 		z1 = oz + nz;
 
 		buf = (float *)malloc((x1-x0)*(y1-y0)*(z1-z0)*sizeof(float));
-		shared = false;
+		shared = true;
 	}
 
 	~Partition()
@@ -65,15 +58,51 @@ public:
 		pthread_join(tid, NULL);
 	}
 
+	void
+	WaitThread(void **r)
+	{
+		pthread_join(tid, r);
+	}
+
 	int GetId() { return id; }
 	void GetOffset(int& x, int& y, int& z) { x = x0; y = y0; z = z0;}
 	void GetSize(int& x, int& y, int& z) { x = x1-x0; y = y1-y0; z = z1-z0;}
 	float *GetBuf() { return buf; }
 	float GetD() { return d; }
 		
+	void SetUserData(void *d, void (*f)(void *))
+	{
+		if (userData && freeUserData)
+			freeUserData(userData);
+		
+		userData = d;
+		freeUserData = f;
+	}
+
+	void *GetUserData() { return userData; }
+
 private:
 
-	void
+	static void
+	partition(int np, int id, int xsz, int ysz, int zsz, int& xo, int& yo, int& zo, int& nx, int& ny, int& nz)
+	{
+		int ni, nj, nk;
+		reduce(np, ni, nj, nk);
+
+		int i, j, k;
+		i = id / (nj * nk);
+		j = (id % (nj*nk)) / nk;
+		k = id % nk;
+
+		xo = i * (xsz / ni);
+		nx = ((i+1) * (xsz / ni) - 1) - xo;
+		yo = j * (ysz / nj);
+		ny = ((j+1) * (ysz / nj) - 1) - yo;
+		zo = k * (zsz / nk);
+		nz = ((k+1) * (zsz / nk) - 1) - zo;
+	}
+
+	static void
 	factor(int n, vector<int>& f)
 	{
 		int i;
@@ -89,7 +118,7 @@ private:
 		}
 	}
 
-	void
+	static void
 	reduce(int n, int& a, int& b, int& c)
 	{
 		vector<int> f;
@@ -127,5 +156,8 @@ private:
   float *buf;
 	pthread_t tid;
 	bool shared;
+
+	void *userData;
+	void (*freeUserData)(void *);
 };
 
