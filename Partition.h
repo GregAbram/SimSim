@@ -1,6 +1,8 @@
 #pragma once 
 
 #include <pthread.h>
+#include <algorithm>
+#include <stdlib.h>
 #include <iostream>
 #include <vector>
 #include <math.h>
@@ -129,7 +131,7 @@ private:
 		{
 			f[1] *= f[0];
 			f.erase(f.begin(), f.begin()+1);
-			sort(f.begin(), f.end());
+			std::sort(f.begin(), f.end());
 		}
 
 		a = f[0];
